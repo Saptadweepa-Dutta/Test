@@ -671,3 +671,264 @@ return json.dumps({k: v for k, v in config.items() if k != "auth_value"}, indent
 
 if *name* == “*main*”:
 mcp.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "VirusTotal API v3.0",
+    "description": "API for scanning files, URLs, domains, and IPs with extended features and metadata.",
+    "version": "3.0"
+  },
+  "servers": [
+    {
+      "url": "https://www.virustotal.com/api/v3",
+      "description": "Main VirusTotal API server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-apikey",
+        "description": "Your API key goes in the x-apikey header for authentication."
+      }
+    },
+    "schemas": {
+      "FileReport": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "properties": {
+                  "last_analysis_stats": {
+                    "type": "object",
+                    "properties": {
+                      "harmless": {
+                        "type": "integer"
+                      },
+                      "malicious": {
+                        "type": "integer"
+                      },
+                      "suspicious": {
+                        "type": "integer"
+                      },
+                      "undetected": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "last_analysis_results": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "category": {
+                          "type": "string"
+                        },
+                        "result": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "md5": {
+                    "type": "string"
+                  },
+                  "sha1": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/files/{file_id}": {
+      "get": {
+        "summary": "Retrieve file scan report by file ID (SHA256)",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "SHA256 hash of the file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with file report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/urls/{url_id}": {
+      "get": {
+        "summary": "Retrieve URL scan report by URL ID (SHA256)",
+        "parameters": [
+          {
+            "name": "url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Encoded URL identifier (SHA256)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with URL report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/domains/{domain_name}": {
+      "get": {
+        "summary": "Retrieve domain report by domain name.",
+        "parameters": [
+          {
+            "name": "domain_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Domain name to retrieve the report for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with domain report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/ip_addresses/{ip_address}": {
+      "get": {
+        "summary": "Retrieve IP address report by IP address.",
+        "parameters": [
+          {
+            "name": "ip_address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "IP address to retrieve the report for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with IP address report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    }
+  }
+}
