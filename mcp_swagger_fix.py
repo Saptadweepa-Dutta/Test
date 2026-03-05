@@ -928,6 +928,159 @@ mcp.run()
             "ApiKeyAuth": []
           }
         ]
+
+
+
+
+
+
+
+
+
+
+
+        import pandas as pd
+import re
+from collections import defaultdict
+from typing import List, Dict, Optional
+
+# ── Sample Data ────────────────────────────────────────────────────────────────
+data = {
+    "id":  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "qid": ["q1","q2","q3","q4","q5","q6","q7","q8","q9","q10"],
+    "question": [
+        "What is machine learning?",
+        "How does deep learning differ from machine learning?",
+        "What is supervised learning?",
+        "Explain unsupervised learning with examples.",
+        "What is natural language processing?",
+        "How do neural networks work?",
+        "What is reinforcement learning?",
+        "How is deep learning used in computer vision?",
+        "What are transformers in NLP?",
+        "How does BERT work in natural language processing?",
+    ]
+}
+df = pd.DataFrame(data)
+
+
+# ── PageIndex ──────────────────────────────────────────────────────────────────
+class PageIndex:
+    """
+    Vectorless full-text index over a DataFrame.
+
+    Strategy:
+      1. Split the DataFrame into fixed-size pages.
+      2. For each page, build an inverted index: token → set of row positions.
+      3. At query time, tokenize the query, intersect (AND) or union (OR)
+         candidate row sets across pages, then return matching rows.
+    """
+
+    def __init__(self, df: pd.DataFrame, text_col: str, page_size: int = 3):
+        self.df        = df.reset_index(drop=True)
+        self.text_col  = text_col
+        self.page_size = page_size
+        self.pages: List[Dict] = []   # list of {page_id, row_range, index}
+        self._build()
+
+    # ── tokeniser ─────────────────────────────────────────────────────────────
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
+        return re.findall(r"\b\w+\b", text.lower())
+
+    # ── build inverted index per page ─────────────────────────────────────────
+    def _build(self):
+        n = len(self.df)
+        for page_id, start in enumerate(range(0, n, self.page_size)):
+            end      = min(start + self.page_size, n)
+            page_df  = self.df.iloc[start:end]
+            inv_idx: Dict[str, set] = defaultdict(set)
+
+            for local_pos, (abs_idx, row) in enumerate(page_df.iterrows()):
+                for token in self._tokenize(str(row[self.text_col])):
+                    inv_idx[token].add(abs_idx)   # store absolute df index
+
+            self.pages.append({
+                "page_id"  : page_id,
+                "row_range": (start, end - 1),
+                "index"    : inv_idx,
+            })
+
+        print(f"[PageIndex] Built {len(self.pages)} pages "
+              f"(page_size={self.page_size}) over {n} rows.")
+
+    # ── query ─────────────────────────────────────────────────────────────────
+    def query(self, query_str: str, mode: str = "AND") -> pd.DataFrame:
+        """
+        Parameters
+        ----------
+        query_str : str   – free-text query
+        mode      : str   – "AND" (all terms must match) | "OR" (any term matches)
+
+        Returns
+        -------
+        pd.DataFrame of matching rows.
+        """
+        tokens = self._tokenize(query_str)
+        if not tokens:
+            return pd.DataFrame(columns=self.df.columns)
+
+        print(f"\n[Query] '{query_str}'  mode={mode}  tokens={tokens}")
+
+        candidate_rows: Optional[set] = None
+
+        for page in self.pages:
+            inv_idx = page["index"]
+
+            # collect matching row-sets for each token in this page
+            token_sets = [inv_idx.get(tok, set()) for tok in tokens]
+
+            if mode == "AND":
+                page_matches = token_sets[0].copy()
+                for s in token_sets[1:]:
+                    page_matches &= s
+            else:  # OR
+                page_matches = set()
+                for s in token_sets:
+                    page_matches |= s
+
+            if candidate_rows is None:
+                candidate_rows = page_matches
+            else:
+                candidate_rows |= page_matches   # union across pages
+
+        if not candidate_rows:
+            print("[Query] No matches found.")
+            return pd.DataFrame(columns=self.df.columns)
+
+        result = self.df.loc[sorted(candidate_rows)]
+        print(f"[Query] {len(result)} row(s) found.")
+        return result
+
+
+# ── Demo ───────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    idx = PageIndex(df, text_col="question", page_size=3)
+
+    print("\n" + "="*60)
+    print("SEARCH 1 — AND: 'machine learning'")
+    print("="*60)
+    print(idx.query("machine learning", mode="AND").to_string(index=False))
+
+    print("\n" + "="*60)
+    print("SEARCH 2 — OR: 'deep learning'")
+    print("="*60)
+    print(idx.query("deep learning", mode="OR").to_string(index=False))
+
+    print("\n" + "="*60)
+    print("SEARCH 3 — AND: 'natural language processing'")
+    print("="*60)
+    print(idx.query("natural language processing", mode="AND").to_string(index=False))
+
+    print("\n" + "="*60)
+    print("SEARCH 4 — AND: 'neural networks'")
+    print("="*60)
+    print(idx.query("neural networks", mode="AND").to_string(index=False))
       }
     }
   }
